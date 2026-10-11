@@ -5,6 +5,8 @@ hosts.githubfix.bak
 *.tmp
 *.log
 _gh-*.txt
+_tmp_*.js
+.tmp_*.js
 
 # 编辑器
 .vscode/
