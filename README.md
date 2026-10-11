@@ -107,6 +107,32 @@ Copy-Item .\hosts.githubfix.bak "$env:SystemRoot\System32\drivers\etc\hosts" -Fo
 ipconfig /flushdns
 ```
 
+## 附带工具：git push 连不上时怎么办
+
+`github.com` 和 `api.github.com` 走的是**不同的边缘节点**，所以经常出现一种尴尬情况：
+
+> 网页能打开 / 脚本修好了浏览器，但 `git push` 依然 `Failed to connect to github.com:443`。
+
+这时可以用附带的 `push-via-api.js`，它改走 `api.github.com` 用 Contents API 上传文件：
+
+```bash
+# 1) 准备一个带 repo 权限的 Personal Access Token
+#    Windows:  $env:GH_TOK = "ghp_xxx"
+#    Linux/macOS: export GH_TOK=ghp_xxx
+
+# 2) 在仓库根目录执行
+node push-via-api.js CSQ798/github-connectivity-fix
+```
+
+它会自动：
+
+- 只上传 `git ls-files` 列出的**已跟踪文件**，不会误传临时文件
+- 在系统 DNS 与多个实测可用 IP 之间自动切换重试（应对间歇性丢包）
+- 对已存在的文件自动带上 sha 完成更新
+
+> 注意：这是 `git push` 的**补充手段**而非替代品。网络正常时请优先使用 `git push`，
+> 因为它能保留完整的 git 历史。用 API 上传产生的是逐文件提交。
+
 ## 常见问题
 
 **Q：改 hosts 安全吗？会有什么副作用？**
