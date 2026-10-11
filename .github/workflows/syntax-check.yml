@@ -1,0 +1,52 @@
+name: PowerShell Syntax Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  syntax:
+    name: Parse & lint fix-github.ps1
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 解析语法（确认 0 错误）
+        shell: pwsh
+        run: |
+          $errors = $null
+          $tokens = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/fix-github.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Host "::error::$($_.Message)" }
+            throw "脚本存在 $($errors.Count) 个语法错误"
+          }
+          Write-Host "语法校验通过：0 个错误"
+
+      - name: 校验 UTF-8 BOM
+        shell: pwsh
+        run: |
+          $bytes = [System.IO.File]::ReadAllBytes("$PWD/fix-github.ps1")
+          $hasBom = $bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF
+          if (-not $hasBom) {
+            throw "fix-github.ps1 缺少 UTF-8 BOM，中文会在 Windows PowerShell 5.1 下乱码"
+          }
+          Write-Host "UTF-8 BOM 校验通过"
+
+      - name: 测试 -TestOnly 参数可解析
+        shell: pwsh
+        run: |
+          $cmd = Get-Command "$PWD/fix-github.ps1"
+          $params = $cmd.Parameters.Keys
+          foreach ($p in @('TestOnly','Restore','Top','NoPause')) {
+            if ($params -notcontains $p) { throw "缺少参数: -$p" }
+          }
+          Write-Host "参数校验通过: TestOnly / Restore / Top / NoPause"
